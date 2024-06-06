@@ -21,19 +21,24 @@ namespace Proyecto
 
         static void Main(string[] args)
         {
-            // conexión con aduino
-            SerialPort puerto = new SerialPort();
-            puerto.BaudRate = 9600;
-            puerto.PortName = "COM3";
-            puerto.Open();
+            // conexión con aduino (descomentar para probar con arduino)
+            //SerialPort puerto = new SerialPort();
+            //puerto.BaudRate = 9600;
+            //puerto.PortName = "COM3";
+            //puerto.Open();
+
+            //variable fechaHora: de aqui pueden sacar la fecha y hora en fomato año:mes:dia:hora
+            DateTime verHora = DateTime.Now;
+            string fechaHora = verHora.ToString("yyyy-MM-dd HH:mm");
 
             //Pedir nombre
             string nombrePaciente = PedirNombre();
+
             //Pedir dedo
             //Generar datos
             //Registrar datos
 
-            Console.WriteLine(puerto.ReadLine());
+            Console.WriteLine("Texto para probar la consola");
             Console.ReadLine();
 
         }
