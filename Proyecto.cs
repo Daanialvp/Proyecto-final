@@ -12,11 +12,19 @@ namespace Proyecto
     internal class Program
     {
 
-        static string PedirNombre()
+        static string PedirNombre() // función para obtener el nombre del paciente
         {
             Console.WriteLine("Por favor ingrese el nombre del (la) paciente: ");
             string nombre = Console.ReadLine();
             return nombre;
+        }
+
+        
+        static string FechaHora() //función FechaHora() : de aqui pueden sacar la fecha y hora en fomato año:mes:dia:hora
+        {
+            DateTime verHora = DateTime.Now;
+            string fechaHora = verHora.ToString("yyyy-MM-dd HH:mm");
+            return fechaHora;
         }
 
         static void Main(string[] args)
@@ -27,9 +35,8 @@ namespace Proyecto
             //puerto.PortName = "COM3";
             //puerto.Open();
 
-            //variable fechaHora: de aqui pueden sacar la fecha y hora en fomato año:mes:dia:hora
-            DateTime verHora = DateTime.Now;
-            string fechaHora = verHora.ToString("yyyy-MM-dd HH:mm");
+            
+            
 
             //Pedir nombre
             string nombrePaciente = PedirNombre();
