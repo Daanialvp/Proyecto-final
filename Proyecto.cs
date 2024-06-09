@@ -7,24 +7,14 @@ using System.IO;
 using System.IO.Ports;
 using System.Threading;
 
-
 namespace Proyecto
 {
     internal class Program
     {
-
         static string PedirNombre() // función para obtener el nombre del paciente
         {
             Console.WriteLine("Por favor ingrese el nombre del (la) paciente: ");
-            string nombre = Console.ReadLine();
-            return nombre;
-        }
-
-        static string FechaHora() //función FechaHora() : de aqui pueden sacar la fecha y hora en fomato año:mes:dia:hora
-        {
-            DateTime verHora = DateTime.Now;
-            string fechaHora = verHora.ToString("yyyy-MM-dd HH:mm");
-            return fechaHora;
+            return Console.ReadLine();
         }
 
         static void MedicionSeñalPPG() // Indicar cuando el paciente debe colocar su dedo sobre el sensor MAX30100 para llevar a cabo la medición de la señal PPG.
@@ -35,21 +25,31 @@ namespace Proyecto
 
         static void Main(string[] args)
         {
-            SerialPort puerto = new SerialPort();
-            puerto.BaudRate = 250000;
-            puerto.PortName = "COM3";
-            puerto.Open();
+            SerialPort puerto = new SerialPort
+            {
+                BaudRate = 250000,
+                PortName = "COM3",
+                ReadTimeout = 5000 // Timeout para evitar bloqueos en la lectura
+            };
 
-            //Pedir nombre
+            try
+            {
+                puerto.Open();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("No se pudo abrir el puerto: " + ex.Message);
+                return;
+            }
+
+            // Pedir nombre
             string nombrePaciente = PedirNombre();
 
-            //Pedir dedo
+            // Indicar al paciente que coloque su dedo
             MedicionSeñalPPG();
 
             // Variables para el cálculo de frecuencia cardíaca
             int pulsos = 0;
-            DateTime inicio = DateTime.Now;
-            string datosPPG = "";
             Console.WriteLine("Midiendo frecuencia cardíaca...");
 
             // Leer datos del sensor
@@ -57,46 +57,38 @@ namespace Proyecto
             {
                 try
                 {
-                    string dato = puerto.ReadLine();
-                    int valorIR = int.Parse(dato.Trim());
+                    string dato = puerto.ReadLine().Trim();
+                    Console.WriteLine("Dato recibido: " + dato);
 
-                    // Detectar un pulso (umbral simple para ejemplo)
+                    if (!double.TryParse(dato, out double valorIR))
+                    {
+                        Console.WriteLine("Dato no válido recibido: " + dato);
+                        continue;
+                    }
+
+                    // Detectar un pulso
                     if (valorIR > 50000)
                     {
                         pulsos++;
                         Console.WriteLine("Pulso detectado: " + pulsos);
                     }
 
-                    // Almacenar datos PPG
-                    datosPPG += valorIR + "\n";
-
                     // Esperar 10 ms antes de la siguiente lectura
                     Thread.Sleep(10);
+                }
+                catch (TimeoutException)
+                {
+                    Console.WriteLine("No se recibieron datos a tiempo de la lectura del sensor");
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine("Error al leer del sensor: " + ex.Message);
                 }
             }
-            //Generar datos
 
-
-            //Registrar datos
-            GuardarDatos(nombrePaciente, datosPPG);//
-            Console.WriteLine("Texto para probar la consola");
+            puerto.Close();
+            Console.WriteLine("Presione Enter para salir...");
             Console.ReadLine();
-
-        }
-        static void GuardarDatos(string nombrePaciente, string datosPPG)//cambiarporlafrecuenciaoriginal
-        {
-            string fechaYHoraActual = FechaHora();
-            string informacionPaciente = $"Nombre del paciente: {nombrePaciente}\nFecha y hora de su medición: {fechaYHoraActual}\nFrecuencia cardíaca: {datosPPG}";
-
-            DateTime fechaHora = DateTime.Now;
-            string nombreArchivo = $"{nombrePaciente}_{fechaHora.Year}_{fechaHora.Month}_{fechaHora.Day}_{fechaHora.Hour}_{fechaHora.Minute}.txt";
-
-            File.WriteAllText(nombreArchivo, informacionPaciente);
-            Console.WriteLine($"Datos guardados exitosamente.");
         }
     }
 }
