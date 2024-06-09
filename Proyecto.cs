@@ -84,6 +84,17 @@ namespace Proyecto
                 {
                     Console.WriteLine("Error al leer del sensor: " + ex.Message);
                 }
+                //Generar datos
+                int LPM, i = 0, promedio;
+                for (i = 0; i == 10; i++) ;
+                {
+                    LPM = pulsos / 10;
+                    Console.ReadKey();
+                }
+                Console.WriteLine("LPM " + LPM);
+                promedio = pulsos * 6;
+                Console.WriteLine("promedio");
+                    
             }
 
             puerto.Close();
