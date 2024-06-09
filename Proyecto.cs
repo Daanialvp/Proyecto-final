@@ -82,15 +82,15 @@ namespace Proyecto
 
 
             //Registrar datos
-            GuardarDatos(nombrePaciente, datosPPG);
+            GuardarDatos(nombrePaciente, datosPPG);//
             Console.WriteLine("Texto para probar la consola");
             Console.ReadLine();
 
         }
-        static void GuardarDatos(string nombrePaciente, string datosPPG)
+        static void GuardarDatos(string nombrePaciente, string datosPPG)//cambiarporlafrecuenciaoriginal
         {
             string fechaYHoraActual = FechaHora();
-            string informacionPaciente = $"Nombre del paciente: {nombrePaciente}\nFecha y hora de su medición: {fechaYHoraActual}\nDatos PPG:\n{datosPPG}\nPromedio de la frecuencia cardíaca: ";
+            string informacionPaciente = $"Nombre del paciente: {nombrePaciente}\nFecha y hora de su medición: {fechaYHoraActual}\nFrecuencia cardíaca: {datosPPG}";
 
             DateTime fechaHora = DateTime.Now;
             string nombreArchivo = $"{nombrePaciente}_{fechaHora.Year}_{fechaHora.Month}_{fechaHora.Day}_{fechaHora.Hour}_{fechaHora.Minute}.txt";
