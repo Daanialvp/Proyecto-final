@@ -23,6 +23,13 @@ namespace Proyecto
             Thread.Sleep(5000);
         }
 
+        static string FechaHora() //función FechaHora() : de aqui pueden sacar la fecha y hora en fomato año:mes:dia:hora
+        {
+            DateTime verHora = DateTime.Now;
+            string fechaHora = verHora.ToString("yyyy-MM-dd HH:mm");
+            return fechaHora;
+        }
+
         static void Main(string[] args)
         {
             SerialPort puerto = new SerialPort
