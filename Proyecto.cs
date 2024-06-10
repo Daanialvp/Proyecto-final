@@ -66,7 +66,15 @@ namespace Proyecto
             // Variables para el cálculo de frecuencia cardíaca
             int pulsos = 0;
             double IRAnterior = -1;
-            Console.WriteLine("Midiendo frecuencia cardíaca...");
+            Console.WriteLine("Midiendo frecuencia cardíaca, por favor espere...");
+
+            //ciclo de espera
+            string basura;
+            for (int index = 0; index < 1500; index++)
+            {
+                basura = puerto.ReadLine();
+                Thread.Sleep(1);
+            }
 
             // Leer datos del sensor
             while (pulsos < 10)
