@@ -26,7 +26,7 @@ namespace Proyecto
         static string FechaHora() //función FechaHora() : de aqui pueden sacar la fecha y hora en fomato año:mes:dia:hora
         {
             DateTime verHora = DateTime.Now;
-            string fechaHora = verHora.ToString("yyyy-MM-dd HH:mm");
+            string fechaHora = verHora.ToString("_yyyy_MM_dd_HH_mm"); // formato ya listo para guardar así el archivo de texto
             return fechaHora;
         }
 
@@ -39,6 +39,8 @@ namespace Proyecto
                 ReadTimeout = 5000 // Timeout para evitar bloqueos en la lectura
             };
 
+
+            // Apertura del puerto
             try
             {
                 puerto.Open();
@@ -51,6 +53,12 @@ namespace Proyecto
 
             // Pedir nombre
             string nombrePaciente = PedirNombre();
+
+            // Armar nombre del archivo de texto
+            string NombreArchivo = nombrePaciente+FechaHora()+".txt";
+
+            //Inicializar el escritor
+            StreamWriter escritor = new StreamWriter(NombreArchivo);
 
             // Indicar al paciente que coloque su dedo
             MedicionSeñalPPG();
@@ -66,6 +74,7 @@ namespace Proyecto
                 {
                     string dato = puerto.ReadLine().Trim();
                     Console.WriteLine("Dato recibido: " + dato);
+                    escritor.WriteLine(dato);
 
                     if (!double.TryParse(dato, out double valorIR))
                     {
@@ -89,21 +98,22 @@ namespace Proyecto
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Error al leer del sensor: " + ex.Message);
+                    Console.WriteLine("Error al leer el sensor: " + ex.Message);
                 }
-                //Generar datos
-                int LPM, i = 0, promedio;
-                for (i = 0; i == 10; i++) ;
-                {
-                    LPM = pulsos / 10;
-                    Console.ReadKey();
-                }
-                Console.WriteLine("LPM " + LPM);
-                promedio = pulsos * 6;
-                Console.WriteLine("promedio");
-                    
             }
 
+            //Generar datos
+            int LPM, i = 0, promedio;
+            for (i = 0; i == 10; i++) ;
+            {
+                LPM = pulsos / 10;
+                Console.ReadKey();
+            }
+            Console.WriteLine("LPM " + LPM);
+            promedio = pulsos * 6;
+            Console.WriteLine("promedio");
+
+            escritor.Close();
             puerto.Close();
             Console.WriteLine("Presione Enter para salir...");
             Console.ReadLine();
