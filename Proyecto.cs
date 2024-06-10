@@ -65,6 +65,7 @@ namespace Proyecto
 
             // Variables para el cálculo de frecuencia cardíaca
             int pulsos = 0;
+            double IRAnterior = -1;
             Console.WriteLine("Midiendo frecuencia cardíaca...");
 
             // Leer datos del sensor
@@ -72,6 +73,9 @@ namespace Proyecto
             {
                 try
                 {
+                    
+
+
                     string dato = puerto.ReadLine().Trim();
                     Console.WriteLine("Dato recibido: " + dato);
                     escritor.WriteLine(dato);
@@ -83,12 +87,13 @@ namespace Proyecto
                     }
 
                     // Detectar un pulso
-                    if (valorIR > 50000)
+                    if ( (valorIR <= 0) && (IRAnterior > 0))
                     {
                         pulsos++;
                         Console.WriteLine("Pulso detectado: " + pulsos);
+                        Console.Beep(); // beep cada que detecte un pulso Es más que nada para que se vea bonito jaja
                     }
-
+                    IRAnterior = valorIR;
                     // Esperar 10 ms antes de la siguiente lectura
                     Thread.Sleep(10);
                 }
