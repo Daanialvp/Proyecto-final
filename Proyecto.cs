@@ -1,135 +1,158 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 using System.IO.Ports;
 using System.Threading;
 
-namespace Proyecto
+class Program
 {
-    internal class Program
+    static void Main(string[] args)
     {
-        static string PedirNombre() // función para obtener el nombre del paciente
-        {
-            Console.WriteLine("Por favor ingrese el nombre del (la) paciente: ");
-            return Console.ReadLine();
-        }
+        string puerto = "COM6";
+        int baudios = 250000;
+        string archivoDatos = PedirNombre() + FechaHora() + ".txt"; // Nombre del archivo para guardar los datos PPG
 
-        static void MedicionSeñalPPG() // Indicar cuando el paciente debe colocar su dedo sobre el sensor MAX30100 para llevar a cabo la medición de la señal PPG.
+        try
         {
-            Console.WriteLine("Por favor, coloque su dedo sobre el sensor para comenzar la medición.");
-            Thread.Sleep(5000);
-        }
-
-        static string FechaHora() //función FechaHora() : de aqui pueden sacar la fecha y hora en fomato año:mes:dia:hora
-        {
-            DateTime verHora = DateTime.Now;
-            string fechaHora = verHora.ToString("_yyyy_MM_dd_HH_mm"); // formato ya listo para guardar así el archivo de texto
-            return fechaHora;
-        }
-
-        static void Main(string[] args)
-        {
-            SerialPort puerto = new SerialPort
+            using (SerialPort puertoSerie = new SerialPort(puerto, baudios))
             {
-                BaudRate = 250000,
-                PortName = "COM3",
-                ReadTimeout = 5000 // Timeout para evitar bloqueos en la lectura
-            };
+                puertoSerie.Open();
+                Console.WriteLine("Conexión establecida con Arduino.");
 
+                // Pedir al paciente que coloque el dedo en el sensor
+                MedicionSeñalPPG();
 
-            // Apertura del puerto
-            try
-            {
-                puerto.Open();
+                // Recoger datos de PPG y guardarlos en un archivo
+                Console.WriteLine("Recogiendo datos de la señal PPG...");
+                RecogerDatosPPG(puertoSerie, archivoDatos);
+
+                // Leer datos desde el archivo y detectar ciclos
+                Console.WriteLine("Detectando ciclos cardíacos...");
+                DetectarCiclos(archivoDatos);
             }
-            catch (Exception ex)
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Console.WriteLine("Error: Puerto COM en uso o no disponible.");
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine("Error de E/S: " + ex.Message);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error: " + ex.Message);
+        }
+
+        Console.WriteLine("Presiona cualquier tecla para salir...");
+        Console.ReadKey();
+    }
+
+    static string PedirNombre() // función para obtener el nombre del paciente
+    {
+        Console.WriteLine("Por favor ingrese el nombre del (la) paciente: ");
+        return Console.ReadLine();
+    }
+
+    static void MedicionSeñalPPG() // Indicar cuando el paciente debe colocar su dedo sobre el sensor MAX30100 para llevar a cabo la medición de la señal PPG.
+    {
+        Console.WriteLine("Por favor, coloque su dedo sobre el sensor para comenzar la medición.");
+        Thread.Sleep(5000);
+    }
+
+    static string FechaHora() // función FechaHora() : de aqui pueden sacar la fecha y hora en formato año:mes:dia:hora
+    {
+        DateTime verHora = DateTime.Now;
+        string fechaHora = verHora.ToString("_yyyy_MM_dd_HH_mm"); // formato ya listo para guardar así el archivo de texto
+        return fechaHora;
+    }
+
+    private static void RecogerDatosPPG(SerialPort puertoSerie, string archivoDatos)
+    {
+        using (StreamWriter escritor = new StreamWriter(archivoDatos))
+        {
+            const int muestras = 1000; // Número total de muestras a recoger
+            int muestrasRecogidas = 0;
+
+            while (muestrasRecogidas < muestras)
             {
-                Console.WriteLine("No se pudo abrir el puerto: " + ex.Message);
+                Thread.Sleep(10);
+
+                if (puertoSerie.BytesToRead > 0)
+                {
+                    string datosRecibidos = puertoSerie.ReadLine();
+                    escritor.WriteLine(datosRecibidos.Trim());
+                    muestrasRecogidas++;
+                }
+            }
+        }
+        Console.WriteLine("Datos de la señal PPG guardados en '{0}'.", archivoDatos);
+    }
+
+    private static void DetectarCiclos(string archivoDatos)
+    {
+        try
+        {
+            string[] lineas = File.ReadAllLines(archivoDatos);
+            if (lineas.Length == 0)
+            {
+                Console.WriteLine("Error: No se encontraron datos en el archivo.");
                 return;
             }
 
-            // Pedir nombre
-            string nombrePaciente = PedirNombre();
+            double[] datosPPG = new double[lineas.Length];
+            int muestrasValidas = 0;
 
-            // Armar nombre del archivo de texto
-            string NombreArchivo = nombrePaciente+FechaHora()+".txt";
-
-            //Inicializar el escritor
-            StreamWriter escritor = new StreamWriter(NombreArchivo);
-
-            // Indicar al paciente que coloque su dedo
-            MedicionSeñalPPG();
-
-            // Variables para el cálculo de frecuencia cardíaca
-            int pulsos = 0;
-            double IRAnterior = -1;
-            Console.WriteLine("Midiendo frecuencia cardíaca, por favor espere...");
-
-            //ciclo de espera
-            string basura;
-            for (int index = 0; index < 1500; index++)
+            for (int i = 0; i < lineas.Length; i++)
             {
-                basura = puerto.ReadLine();
-                Thread.Sleep(1);
-            }
-
-            // Leer datos del sensor
-            while (pulsos < 10)
-            {
-                try
+                if (double.TryParse(lineas[i], out double valor))
                 {
-                    
-
-
-                    string dato = puerto.ReadLine().Trim();
-                    Console.WriteLine("Dato recibido: " + dato);
-                    escritor.WriteLine(dato);
-
-                    if (!double.TryParse(dato, out double valorIR))
-                    {
-                        Console.WriteLine("Dato no válido recibido: " + dato);
-                        continue;
-                    }
-
-                    // Detectar un pulso
-                    if ( (valorIR <= 0) && (IRAnterior > 0))
-                    {
-                        pulsos++;
-                        Console.WriteLine("Pulso detectado: " + pulsos);
-                        Console.Beep(); // beep cada que detecte un pulso Es más que nada para que se vea bonito jaja
-                    }
-                    IRAnterior = valorIR;
-                    // Esperar 10 ms antes de la siguiente lectura
-                    Thread.Sleep(10);
+                    datosPPG[muestrasValidas++] = valor;
                 }
-                catch (TimeoutException)
+                else
                 {
-                    Console.WriteLine("No se recibieron datos a tiempo de la lectura del sensor");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Error al leer el sensor: " + ex.Message);
+                    Console.WriteLine("Advertencia: Se encontró un dato no válido en la línea {0}: '{1}'", i + 1, lineas[i]);
                 }
             }
 
-            //Generar datos
-            int LPM, i = 0, promedio;
-            for (i = 0; i == 10; i++) ;
-            {
-                LPM = pulsos / 10;
-                Console.ReadKey();
-            }
-            Console.WriteLine("LPM " + LPM);
-            promedio = pulsos * 6;
-            Console.WriteLine("promedio");
+            // Redimensionar el arreglo para contener solo las muestras válidas
+            Array.Resize(ref datosPPG, muestrasValidas);
 
-            escritor.Close();
-            puerto.Close();
-            Console.WriteLine("Presione Enter para salir...");
-            Console.ReadLine();
+            // Continuar con la detección de ciclos solo si hay muestras válidas
+            if (datosPPG.Length == 0)
+            {
+                Console.WriteLine("No hay datos válidos para detectar ciclos.");
+                return;
+            }
+
+            // Detección de ciclos cardíacos
+            const double umbral = 0.5;
+            bool enCiclo = false;
+            int ciclosDetectados = 0;
+            int inicioCiclo = 0;
+
+            for (int i = 0; i < datosPPG.Length; i++)
+            {
+                if (datosPPG[i] > umbral && !enCiclo)
+                {
+                    enCiclo = true;
+                    inicioCiclo = i;
+                }
+                else if (datosPPG[i] < umbral && enCiclo)
+                {
+                    enCiclo = false;
+                    int duracionCiclo = i - inicioCiclo;
+                    Console.WriteLine($"Ciclo {++ciclosDetectados}: {duracionCiclo} muestras ({duracionCiclo * 10} ms)");
+                }
+            }
+
+            // Calcular la frecuencia cardíaca promedio
+            double duracionTotal = datosPPG.Length * 10; // Duración total en milisegundos
+            double frecuenciaCardiacaPromedio = (ciclosDetectados / (duracionTotal / 60000.0)); // En latidos por minuto
+            Console.WriteLine($"\nFrecuencia cardíaca promedio: {frecuenciaCardiacaPromedio} latidos por minuto");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error al detectar los ciclos: " + ex.Message);
         }
     }
 }
