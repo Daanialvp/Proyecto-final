@@ -9,7 +9,7 @@ class Program
     {
         string puerto = "COM6";
         int baudios = 250000;
-        string archivoDatos = PedirNombre() + FechaHora() + ".txt"; // Nombre del archivo para guardar los datos PPG
+        string archivoDatos = PedirNombre() + FechaHora() + ".txt";
 
         try
         {
@@ -18,14 +18,11 @@ class Program
                 puertoSerie.Open();
                 Console.WriteLine("Conexión establecida con Arduino.");
 
-                // Pedir al paciente que coloque el dedo en el sensor
                 MedicionSeñalPPG();
 
-                // Recoger datos de PPG y guardarlos en un archivo
                 Console.WriteLine("Recogiendo datos de la señal PPG...");
                 RecogerDatosPPG(puertoSerie, archivoDatos);
 
-                // Leer datos desde el archivo y detectar ciclos
                 Console.WriteLine("Detectando ciclos cardíacos...");
                 DetectarCiclos(archivoDatos);
             }
@@ -47,30 +44,29 @@ class Program
         Console.ReadKey();
     }
 
-    static string PedirNombre() // función para obtener el nombre del paciente
+    static string PedirNombre()
     {
         Console.WriteLine("Por favor ingrese el nombre del (la) paciente: ");
         return Console.ReadLine();
     }
 
-    static void MedicionSeñalPPG() // Indicar cuando el paciente debe colocar su dedo sobre el sensor MAX30100 para llevar a cabo la medición de la señal PPG.
+    static void MedicionSeñalPPG()
     {
         Console.WriteLine("Por favor, coloque su dedo sobre el sensor para comenzar la medición.");
         Thread.Sleep(5000);
     }
 
-    static string FechaHora() // función FechaHora() : de aqui pueden sacar la fecha y hora en formato año:mes:dia:hora
+    static string FechaHora()
     {
         DateTime verHora = DateTime.Now;
-        string fechaHora = verHora.ToString("_yyyy_MM_dd_HH_mm"); // formato ya listo para guardar así el archivo de texto
-        return fechaHora;
+        return verHora.ToString("_yyyy_MM_dd_HH_mm");
     }
 
     private static void RecogerDatosPPG(SerialPort puertoSerie, string archivoDatos)
     {
         using (StreamWriter escritor = new StreamWriter(archivoDatos))
         {
-            const int muestras = 1000; // Número total de muestras a recoger
+            const int muestras = 1000;
             int muestrasRecogidas = 0;
 
             while (muestrasRecogidas < muestras)
@@ -80,8 +76,11 @@ class Program
                 if (puertoSerie.BytesToRead > 0)
                 {
                     string datosRecibidos = puertoSerie.ReadLine();
-                    escritor.WriteLine(datosRecibidos.Trim());
-                    muestrasRecogidas++;
+                    if (double.TryParse(datosRecibidos, out _))
+                    {
+                        escritor.WriteLine(datosRecibidos.Trim());
+                        muestrasRecogidas++;
+                    }
                 }
             }
         }
@@ -114,21 +113,30 @@ class Program
                 }
             }
 
-            // Redimensionar el arreglo para contener solo las muestras válidas
             Array.Resize(ref datosPPG, muestrasValidas);
 
-            // Continuar con la detección de ciclos solo si hay muestras válidas
             if (datosPPG.Length == 0)
             {
                 Console.WriteLine("No hay datos válidos para detectar ciclos.");
                 return;
             }
 
-            // Detección de ciclos cardíacos
-            const double umbral = 0.5;
+            const double umbralRelativo = 0.5;
+            double maxValor = datosPPG[0];
+            double minValor = datosPPG[0];
+
+            foreach (var valor in datosPPG)
+            {
+                if (valor > maxValor) maxValor = valor;
+                if (valor < minValor) minValor = valor;
+            }
+
+            double umbral = minValor + (maxValor - minValor) * umbralRelativo;
+
             bool enCiclo = false;
             int ciclosDetectados = 0;
             int inicioCiclo = 0;
+            double duracionTotal = 0;
 
             for (int i = 0; i < datosPPG.Length; i++)
             {
@@ -141,14 +149,29 @@ class Program
                 {
                     enCiclo = false;
                     int duracionCiclo = i - inicioCiclo;
-                    Console.WriteLine($"Ciclo {++ciclosDetectados}: {duracionCiclo} muestras ({duracionCiclo * 10} ms)");
+                    duracionTotal += duracionCiclo;
+                    ciclosDetectados++;
+
+                    if (ciclosDetectados == 10)
+                        break;
                 }
             }
 
-            // Calcular la frecuencia cardíaca promedio
-            double duracionTotal = datosPPG.Length * 10; // Duración total en milisegundos
-            double frecuenciaCardiacaPromedio = (ciclosDetectados / (duracionTotal / 60000.0)); // En latidos por minuto
-            Console.WriteLine($"\nFrecuencia cardíaca promedio: {frecuenciaCardiacaPromedio} latidos por minuto");
+            if (ciclosDetectados == 10)
+            {
+                double duracionPromedio = duracionTotal / 10;
+                double frecuenciaCardiacaPromedio = 60000 / (duracionPromedio * 10);
+                Console.WriteLine($"\nFrecuencia cardíaca promedio: {frecuenciaCardiacaPromedio} latidos por minuto");
+
+                using (StreamWriter escritor = new StreamWriter("FrecuenciasCardiacas.txt", true))
+                {
+                    escritor.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {Path.GetFileName(archivoDatos)}: {frecuenciaCardiacaPromedio} latidos por minuto");
+                }
+            }
+            else
+            {
+                Console.WriteLine("No se detectaron suficientes ciclos para calcular la frecuencia cardíaca.");
+            }
         }
         catch (Exception ex)
         {
